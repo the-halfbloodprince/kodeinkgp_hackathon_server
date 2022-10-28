@@ -1,0 +1,13 @@
+GET http://localhost:8000/user-portfolios HTTP/1.1
+###
+GET http://localhost:8000/transactions HTTP/1.1
+###
+GET http://localhost:8000/order-book-buy HTTP/1.1
+###
+GET http://localhost:8000/order-book-sell HTTP/1.1
+###
+GET http://localhost:8000/market-prices HTTP/1.1
+###
+GET http://localhost:8000/get-all-data HTTP/1.1
+###
+GET http://localhost:8000 HTTP/1.1
