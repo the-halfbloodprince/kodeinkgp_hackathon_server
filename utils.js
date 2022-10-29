@@ -1,11 +1,19 @@
-const getDataFromDB = async (db, collection_name, options = null) => {
+const getDataFromDB = async (db, collection_name, order_by = null) => {
     
-    const snapshot = await db.collection(collection_name).get()
+    // console.log(collection_name)
+    // console.log(order_by)
+
+
+    const snapshot = await db.collection(collection_name).get();
 
     const data = []
 
+
     snapshot.forEach(doc => {
-        data.push(doc.data())
+        // console.log(doc.data())
+        const d = doc.data()
+        d['id'] = doc.id
+        data.push(d)
     })
 
     return data

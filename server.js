@@ -41,8 +41,15 @@ app.get('/user-portfolios', async (req, res) => {
 });
 
 app.get('/market-prices', async (req, res) => {
-	const data = await getDataFromDB(db, 'market_prices');
-	res.send(data);
+	// const data = await getDataFromDB(db, 'market_prices');
+    const ss = await db.collection('market_prices').get()
+	
+    ss.forEach(doc => {
+        console.log(doc.data())
+    })
+    
+    
+    res.send('u');
 });
 
 app.get('/order-book-buy', async (req, res) => {
@@ -66,12 +73,13 @@ app.get('/transactions', async (req, res) => {
 // })
 
 app.get('/get-all-data', async (req, res) => {
+
 	const data = {};
 
 	// get the user-data
 	data['user_portfolios'] = await getDataFromDB(db, 'user_portfolios');
 	// get the current-prices
-	data['market_prices'] = await getDataFromDB(db, 'market_prices');
+	data['market_prices'] = await getDataFromDB(db, 'market_prices','timestamp');
 	// get the current-market- price
 	// data ['user_portfolios'] = await getDataFromDB(db, 'user_portfolios')
 	// get the buy orders
@@ -103,7 +111,7 @@ app.post('/buy', async (req, res) => {
 	// 	return res.status(400).send('Insufficient fiat');
 	// }
 
-	if (order_type === 'Limit') {
+	if (order_type === 'limit') {
 		if (buyerFiat < quantity * price)
 		{
 			return res.send("Don't have sufficient fund")
@@ -115,15 +123,23 @@ app.post('/buy', async (req, res) => {
 			datetime: FieldValue.serverTimestamp(),
 		});
 		console.log(newOrder.id);
+
 	} else {
 		const res = await db
 			.collection('pending_sell_orders')
 			.orderBy('price')
 			.get();
+
+        console.log('all sellers: ')
+        
 		const allSell = [];
-		res.forEach((sell) => {
-			allSell.push({ id: sell.id, data: sell.data() });
+		
+        res.forEach((sell) => {
+            allSell.push({ id: sell.id, data: sell.data() });
 		});
+
+        console.log(allSell)
+        
 		const toDeleteIds = [];
 		let i = 0;
 		const bu = await db.collection('user_portfolios').doc(user_id).get();
@@ -134,25 +150,27 @@ app.post('/buy', async (req, res) => {
 			let canProvideStock = allSell[i].data.quantity;
 
 			let minQuantity = Math.min(quantity, canProvideStock);
+			
 			const sellerRef = await db
 				.collection('user_portfolios')
 				.doc(allSell[i].data.user);
 
             const sellerData = await sellerRef.get();
-            if (sellerData.id === user_id)
-            {
+            if (sellerData.id === user_id) {
                 i++;
                 continue;
-
             }
+
             const sellOrderRef = await db
 							.collection('pending_sell_orders')
 							.doc(allSell[i].id);
 
 			const sellOrderData = await sellOrderRef.get(); 
-			console.log(sellOrderData.data())
-			if (minQuantity * allSell[i].data.price > buyerFiat) {
+			// console.log(sellOrderData.data())
+			
+            if (minQuantity * allSell[i].data.price > buyerFiat) {
 				let canTake = Math.floor(buyerFiat / allSell[i].data.price);
+                console.log(canTake)
 				buyerFiat -= canTake * allSell[i].data.price;
 				sellerRef.update({
 					// give money to seller
@@ -249,7 +267,7 @@ app.post('/sell', async (req, res) => {
 		return res.send("Not enough Stocks")
 	}
 
-	if (order_type === 'Limit') {
+	if (order_type === 'limit') {
 		const newOrder = await db.collection('pending_sell_orders').add({
 			user: user_id,
 			quantity: quantity,
@@ -307,7 +325,7 @@ app.post('/sell', async (req, res) => {
 			if (minQuantity > 0) {
 				await db.collection('market_prices').add({
 					datetime: FieldValue.serverTimestamp(),
-					price: allSell[i].data.price,
+					price: allBuy[i].data.price,
 				});
 			}
 			
