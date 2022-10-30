@@ -97,162 +97,485 @@ app.get('/get-all-data', async (req, res) => {
 	res.send(data);
 });
 
-app.post('/buy', async (req, res) => {
-	// console.log(req.body);
+// app.post('/buy', async (req, res) => {
+// 	// console.log(req.body);
 
-	let { user_id, order_type, quantity, price } = req.body;
+// 	let { user_id, order_type, quantity, price } = req.body;
 
-	// validate transaction possibility
-	const ss = await db.collection('user_portfolios').doc(user_id).get();
+// 	// validate transaction possibility
+// 	const ss = await db.collection('user_portfolios').doc(user_id).get();
 
-	let buyerFiat = ss.data().fiat;
+// 	let buyerFiat = ss.data().fiat;
     
-	// if (buyerFiat < quantity * price) {
-	// 	return res.status(400).send('Insufficient fiat');
-	// }
+// 	// if (buyerFiat < quantity * price) {
+// 	// 	return res.status(400).send('Insufficient fiat');
+// 	// }
 
-	if (order_type === 'limit') {
-		if (buyerFiat < quantity * price)
-		{
-			return res.send("Don't have sufficient fund")
-		}
-		const newOrder = await db.collection('pending_buy_orders').add({
-			user: user_id,
-			quantity: quantity,
-			price: price,
-			datetime: FieldValue.serverTimestamp(),
-		});
-		console.log(newOrder.id);
+// 	if (order_type === 'limit') {
+// 		if (buyerFiat < quantity * price)
+// 		{
+// 			return res.send("Don't have sufficient fund")
+// 		}
+// 		const newOrder = await db.collection('pending_buy_orders').add({
+// 			user: user_id,
+// 			quantity: quantity,
+// 			price: price,
+// 			datetime: FieldValue.serverTimestamp(),
+// 		});
+// 		console.log(newOrder.id);
 
-	} else {
-		const res = await db
-			.collection('pending_sell_orders')
-			.orderBy('price')
-			.get();
+// 	} else {
 
-        console.log('all sellers: ')
-        
-		const allSell = [];
+// 		const ress = await db
+// 			.collection('pending_sell_orders')
+// 			// .orderBy('price')
+// 			.get();
+
+// 		const allSell = [];
 		
-        res.forEach((sell) => {
-            allSell.push({ id: sell.id, data: sell.data() });
-		});
+//         ress.forEach((sell) => {
+//             console.log('sell order: ')
+//             console.log(sell)
+//             allSell.push({ id: sell.id, data: sell.data() });
+// 		});
 
-        console.log(allSell)
+//         console.log('allSell')
+//         console.log(allSell)
         
-		const toDeleteIds = [];
-		let i = 0;
-		const bu = await db.collection('user_portfolios').doc(user_id).get();
-		let buyerFiat = bu.data().fiat;
-		let stocksAddedToBuyer = 0;
+//         // return res.send(400)
 
-		while (i < allSell.length && quantity > 0) {
-			let canProvideStock = allSell[i].data.quantity;
+// 		const toDeleteIds = [];
+// 		let i = 0;
+// 		const bu = await db.collection('user_portfolios').doc(user_id).get();
+// 		let buyerFiat = bu.data().fiat;
+// 		let stocksAddedToBuyer = 0;
 
-			let minQuantity = Math.min(quantity, canProvideStock);
+// 		while (i < allSell.length && quantity > 0) {
 			
-			const sellerRef = await db
-				.collection('user_portfolios')
-				.doc(allSell[i].data.user);
+//             let canProvideStock = allSell[i].data.quantity;
 
-            const sellerData = await sellerRef.get();
-            if (sellerData.id === user_id) {
-                i++;
-                continue;
+// 			let minQuantity = Math.min(quantity, canProvideStock);
+			
+// 			const sellerRef = await db
+// 				.collection('user_portfolios')
+// 				.doc(allSell[i].data.user);
+
+//             const sellerData = await sellerRef.get();
+//             if (sellerData.id === user_id) {
+//                 i++;
+//                 continue;
+//             }
+
+//             const sellOrderRef = await db
+// 							.collection('pending_sell_orders')
+// 							.doc(allSell[i].id);
+
+// 			const sellOrderData = await sellOrderRef.get(); 
+// 			console.log(sellOrderData.data())
+			
+//             if (minQuantity * allSell[i].data.price > buyerFiat) {
+// 				let canTake = Math.floor(buyerFiat / allSell[i].data.price);
+//                 console.log(canTake)
+// 				buyerFiat -= canTake * allSell[i].data.price;
+// 				sellerRef.update({
+// 					// give money to seller
+// 					fiat: sellerData.data().fiat + canTake * allSell[i].data.price,
+// 					// decrease stocks
+// 					stocks: sellerData.data().stocks - canTake,
+// 				});
+
+// 				// add stocks gained to buyer
+// 				stocksAddedToBuyer += canTake;
+
+// 				// update quantity of loop
+// 				quantity -= canTake;
+
+// 				// update the seller sell order quantity
+// 				sellOrderRef.update({
+					
+// 					quantity:sellOrderData.data().quantity-canTake
+					
+// 				});
+				
+// 				if (canTake > 0)
+// 				{
+// 					await db.collection('market_prices').add({
+// 						datetime: FieldValue.serverTimestamp(),
+// 						price:allSell[i].data.price
+// 					})
+// 				}
+
+// 				// end
+// 				break;
+// 			} else {
+// 				// subtract price from buyerFiat
+// 				buyerFiat -= minQuantity * allSell[i].data.price;
+// 				let sellerStocksleft = allSell[i].data.quantity - minQuantity;
+// 				sellerRef.update({
+// 					// give money to seller
+// 					fiat: sellerData.data().fiat + minQuantity * allSell[i].data.price,
+// 					// decrease stocks
+// 					stocks: sellerStocksleft,
+// 				});
+// 				// add stocks gained to buyer
+// 				stocksAddedToBuyer += minQuantity;
+
+// 				// update quantity
+// 				quantity -= minQuantity;
+
+// 				//add sell to delete if he is sold completely
+				
+
+// 				if (sellerStocksleft === 0) {
+// 					toDeleteIds.push(allSell[i].id);
+// 				}
+// 				else {
+// 					sellOrderRef.update({
+// 						quantity: sellerStocksleft,
+// 					});
+// 				}
+
+// 				if (minQuantity> 0) {
+// 					await db.collection('market_prices').add({
+// 						datetime: FieldValue.serverTimestamp(),
+// 						price: allSell[i].data.price,
+// 					});
+// 				}
+				
+// 			}
+// 			i++;
+// 		}
+
+// 		const buyerRef = await db.collection('user_portfolios').doc(user_id);
+// 		const buyerData = await buyerRef.get();
+// 		buyerRef.update({
+// 			fiat: buyerFiat,
+// 			stocks: buyerData.data().stocks + stocksAddedToBuyer,
+// 		});
+//         console.log(toDeleteIds)
+// 		toDeleteIds.forEach(async (id) => {
+// 			const res = await db.collection('pending_sell_orders').doc(id).delete();
+// 		});
+// 	}
+
+// 	return res.send('noic');
+// });
+
+app.post('/buy', async (req, res) => {
+
+    let { user_id, order_type, quantity, price } = req.body
+
+    // get the sorted list of sell orders
+    const sellOrdersRef = await db.collection('pending_sell_orders').orderBy('price').get()
+
+    const sellOrders = []
+    sellOrdersRef.forEach(sellOrder => sellOrders.push({
+        id: sellOrder.id,
+        ...sellOrder.data()
+    }))
+
+    // console.log('sellOrders: ')
+    // console.log(sellOrders)
+
+    const buyer = {
+        fiat: 0,
+        stocks: 0
+    }
+
+    
+
+    const buyerRef = await db.collection('user_portfolios').doc(user_id)
+    const buyerData = await buyerRef.get()
+
+    buyer.fiat = buyerData.data().fiat
+    buyer.stocks = buyerData.data().stocks
+    
+    const sellOrdersToUpdate = []
+
+    if (order_type === 'limit') {
+
+        let i = 0
+
+        while (i < sellOrders.length && (quantity > 0 || (sellOrders[i].price <= price))) {
+
+            // console.log('while loop')
+
+            const sellerRef = await db.collection('user_portfolios').doc(sellOrders[i]['user'])
+            const sellerData = await sellerRef.get()
+
+            const seller = {
+                fiat: 0,
+                stocks: 0
             }
 
-            const sellOrderRef = await db
-							.collection('pending_sell_orders')
-							.doc(allSell[i].id);
+            seller.fiat = sellerData.data().fiat
+            seller.stocks = sellerData.data().stocks
 
-			const sellOrderData = await sellOrderRef.get(); 
-			// console.log(sellOrderData.data())
-			
-            if (minQuantity * allSell[i].data.price > buyerFiat) {
-				let canTake = Math.floor(buyerFiat / allSell[i].data.price);
-                console.log(canTake)
-				buyerFiat -= canTake * allSell[i].data.price;
-				sellerRef.update({
-					// give money to seller
-					fiat: sellerData.data().fiat + canTake * allSell[i].data.price,
-					// decrease stocks
-					stocks: sellerData.data().stocks - canTake,
-				});
+            let hmtb = Math.min(quantity, sellOrders[i]['quantity'])
 
-				// add stocks gained to buyer
-				stocksAddedToBuyer += canTake;
 
-				// update quantity of loop
-				quantity -= canTake;
+            // if we can only take this sellers stocks partially
+            if (sellOrders[i]['price'] * hmtb > buyer.fiat) {
 
-				sellOrderRef.update({
-					
-					quantity:sellOrderData.data().quantity-canTake
-					
-				});
-				if (canTake > 0)
-				{
-					await db.collection('market_prices').add({
-						datetime: FieldValue.serverTimestamp(),
-						price:allSell[i].data.price
-					})
-				}
+                hmtb = Math.floor(buyer.fiat / sellOrders[i]['price'])
 
-				// end
-				break;
-			} else {
-				// subtract price from buyerFiat
-				buyerFiat -= minQuantity * allSell[i].data.price;
-				let sellerStocksleft = allSell[i].data.quantity - minQuantity;
-				sellerRef.update({
-					// give money to seller
-					fiat: sellerData.data().fiat + minQuantity * allSell[i].data.price,
-					// decrease stocks
-					stocks: sellerStocksleft,
-				});
-				// add stocks gained to buyer
-				stocksAddedToBuyer += minQuantity;
+                if (hmtb == 0) {
+                    continue;
+                }
 
-				// update quantity
-				quantity -= minQuantity;
+                buyer.fiat -= hmtb * sellOrder[i].price
+                seller.fiat += hmtb * sellOrder[i].price
 
-				//add sell to delete if he is sold completely
-				
+                buyer.stocks += hmtb
+                seller.stocks -= hmtb
 
-				if (sellerStocksleft === 0) {
-					toDeleteIds.push(allSell[i].id);
-				}
-				else {
-					sellOrderRef.update({
-						quantity: sellerStocksleft,
-					});
-				}
+                sellOrdersToUpdate.push({
+                    id: sellOrders[i].id,
+                    quantity: sellOrders[i].quantity - hmtb
+                })
 
-				if (minQuantity> 0) {
-					await db.collection('market_prices').add({
-						datetime: FieldValue.serverTimestamp(),
-						price: allSell[i].data.price,
-					});
-				}
-				
-			}
-			i++;
-		}
+                // update portf
+                sellerRef.update({
+                    fiat: seller.fiat,
+                    stocks: seller.stocks
+                })
 
-		const buyerRef = await db.collection('user_portfolios').doc(user_id);
-		const buyerData = await buyerRef.get();
-		buyerRef.update({
-			fiat: buyerFiat,
-			stocks: buyerData.data().stocks + stocksAddedToBuyer,
-		});
-        console.log(toDeleteIds)
-		toDeleteIds.forEach(async (id) => {
-			const res = await db.collection('pending_sell_orders').doc(id).delete();
-		});
-	}
+                // add trans
+                const trans = await db.collection('transactions').add({
+                    buyer: user_id,
+                    seller: sellOrders[i]['id'],
+                    price: hmtb * sellOrders[i]['price'],
+                    quantity: hmtb,
+                    datetime: FieldValue.serverTimestamp()
+                })
 
-	return res.send('noic');
-});
+                // currentprice_update
+                const marketPrice = await db.collection('market_prices').add({
+                    price: sellOrders[i]['price'],
+                    datetime: FieldValue.serverTimestamp()
+                })
+
+                quantity -= hmtb
+
+            } else {
+
+                // we can fully take
+
+                buyer.fiat -= hmtb * sellOrders[i].price
+                seller.fiat += hmtb * sellOrders[i].price
+
+                buyer.stocks += hmtb
+                seller.stocks -= hmtb
+
+                sellOrdersToUpdate.push({
+                    id: sellOrders[i].id,
+                    quantity: sellOrders[i].quantity - hmtb
+                })
+
+                // update portf
+                sellerRef.update({
+                    fiat: seller.fiat,
+                    stocks: seller.stocks
+                })
+
+                // add trans
+                const trans = await db.collection('transactions').add({
+                    buyer: user_id,
+                    seller: sellOrders[i]['id'],
+                    price: hmtb * sellOrders[i]['price'],
+                    quantity: hmtb,
+                    datetime: FieldValue.serverTimestamp()
+                })
+
+                // currentprice_update
+                const marketPrice = await db.collection('market_prices').add({
+                    price: sellOrders[i]['price'],
+                    datetime: FieldValue.serverTimestamp()
+                })
+
+                quantity -= hmtb
+
+            }
+
+            i++
+
+        }
+
+        // whatever is pending, just add it to the order book
+        if (quantity > 0) {
+            const newBuyOrder = await db.collection('pending_buy_orders').add({
+                price: price,
+                quantity: quantity,
+                user: user_id,
+                datetime: FieldValue.serverTimestamp()
+        })}
+
+        // update the buyer portf
+        buyerRef.update({
+            stocks: buyer.stocks,
+            fiat: buyer.fiat
+        })
+
+        // update the order book
+        sellOrdersToUpdate.forEach(async (sellOrder) => {
+            if (sellOrder.quantity == 0) {
+                await db.collection('pending_sell_orders').doc(sellOrder.id).delete()
+            } else {
+                await db.collection('pending_sell_orders').doc(sellOrder.id).update({
+                    quantity: sellOrder.quantity
+                })
+            }
+        })
+
+    } else {
+
+        let currMarketPrice = 0
+
+        // market
+
+        let i = 0
+
+        while (i < sellOrders.length && (quantity > 0 && buyer.fiat > sellOrders[i].price)) {
+
+        //     // console.log('while loop')
+
+            const sellerRef = await db.collection('user_portfolios').doc(sellOrders[i]['user'])
+            const sellerData = await sellerRef.get()
+
+            const seller = {
+                fiat: 0,
+                stocks: 0
+            }
+
+            seller.fiat = sellerData.data().fiat
+            seller.stocks = sellerData.data().stocks
+
+            let hmtb = Math.min(quantity, sellOrders[i]['quantity'])
+
+
+        //     // if we can only take this sellers stocks partially
+            if (sellOrders[i]['price'] * hmtb > buyer.fiat) {
+
+                hmtb = Math.floor(buyer.fiat / sellOrders[i]['price'])
+
+                if (hmtb == 0) {
+                    continue;
+                }
+
+                buyer.fiat -= hmtb * sellOrder[i].price
+                seller.fiat += hmtb * sellOrder[i].price
+
+                buyer.stocks += hmtb
+                seller.stocks -= hmtb
+
+                sellOrdersToUpdate.push({
+                    id: sellOrders[i].id,
+                    quantity: sellOrders[i].quantity - hmtb
+                })
+
+                // update portf
+                sellerRef.update({
+                    fiat: seller.fiat,
+                    stocks: seller.stocks
+                })
+
+                // add trans
+                const trans = await db.collection('transactions').add({
+                    buyer: user_id,
+                    seller: sellOrders[i]['id'],
+                    price: hmtb * sellOrders[i]['price'],
+                    quantity: hmtb,
+                    datetime: FieldValue.serverTimestamp()
+                })
+
+                // currentprice_update
+                currMarketPrice = sellOrders[i]['price']
+                const marketPrice = await db.collection('market_prices').add({
+                    price: sellOrders[i]['price'],
+                    datetime: FieldValue.serverTimestamp()
+                })
+
+                quantity -= hmtb
+
+            } 
+            else {
+
+                // we can fully take
+
+                buyer.fiat -= hmtb * sellOrders[i].price
+                seller.fiat += hmtb * sellOrders[i].price
+
+                buyer.stocks += hmtb
+                seller.stocks -= hmtb
+
+                sellOrdersToUpdate.push({
+                    id: sellOrders[i].id,
+                    quantity: sellOrders[i].quantity - hmtb
+                })
+
+                // update portf
+                sellerRef.update({
+                    fiat: seller.fiat,
+                    stocks: seller.stocks
+                })
+
+                // add trans
+                const trans = await db.collection('transactions').add({
+                    buyer: user_id,
+                    seller: sellOrders[i]['id'],
+                    price: hmtb * sellOrders[i]['price'],
+                    quantity: hmtb,
+                    datetime: FieldValue.serverTimestamp()
+                })
+
+                // currentprice_update
+                currMarketPrice = sellOrders[i]['price']
+                const marketPrice = await db.collection('market_prices').add({
+                    price: sellOrders[i]['price'],
+                    datetime: FieldValue.serverTimestamp()
+                })
+
+                quantity -= hmtb
+
+            }
+
+            i++
+
+        }
+
+        
+
+        // // whatever is pending, just add it to the order book
+        if (quantity > 0) {
+            const newBuyOrder = await db.collection('pending_buy_orders').add({
+                price: currentMarketPrice,
+                quantity: quantity,
+                user: user_id,
+                datetime: FieldValue.serverTimestamp()
+        })}
+
+        // update the buyer portf
+        buyerRef.update({
+            stocks: buyer.stocks,
+            fiat: buyer.fiat
+        })
+
+        // // update the order book
+        sellOrdersToUpdate.forEach(async (sellOrder) => {
+            if (sellOrder.quantity == 0) {
+                await db.collection('pending_sell_orders').doc(sellOrder.id).delete()
+            } else {
+                await db.collection('pending_sell_orders').doc(sellOrder.id).update({
+                    quantity: sellOrder.quantity
+                })
+            }
+        })
+
+    }
+
+    res.send('noiccc')
+
+})
 
 app.post('/sell', async (req, res) => {
 	let { user_id, order_type, quantity, price } = req.body;
@@ -276,6 +599,7 @@ app.post('/sell', async (req, res) => {
 		});
 		console.log(newOrder.id);
 	} else {
+        // market
 		const res = await db
 			.collection('pending_buy_orders')
 			.orderBy('price')
@@ -334,11 +658,13 @@ app.post('/sell', async (req, res) => {
 
 		const sellerRef = await db.collection('user_portfolios').doc(user_id);
 		const sellerData = await sellerRef.get();
+		
 		sellerRef.update({
 			fiat: sellerData.data().fiat + moneyAddedToSeller,
 			stocks: sellerData.data().stocks - stocksSubFromSeller,
 		});
 		console.log(toDeleteIds);
+
 		toDeleteIds.forEach(async (id) => {
 			const res = await db.collection('pending_buy_orders').doc(id).delete();
 		});
