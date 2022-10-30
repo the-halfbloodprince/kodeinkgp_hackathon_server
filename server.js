@@ -322,7 +322,10 @@ app.post('/sell', async (req, res) => {
 									price: allBuy[i].data.price,
 									quantity: minQuantity,
 									datetime: FieldValue.serverTimestamp(),
-								});
+				});
+				buyOrderRef.update({
+					quantity: buyOrderData.data().quantity - minQuantity,
+				});
 			}
 
 			i--;
