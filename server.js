@@ -110,7 +110,7 @@ app.post('/buy', async (req, res) => {
 
 	let buyerFiat = bu.data().fiat;
 	if (buyerFiat < quantity * price) {
-		return res.status(400).send("Don't have sufficient fund");
+		return res.status(401).send("Don't have sufficient fund");
 	}
 	const resArray = await db.collection('pending_sell_orders').orderBy('price').get();
 	const allSell = [];
@@ -177,7 +177,7 @@ app.post('/buy', async (req, res) => {
 		} else {
 			// subtract price from buyerFiat
 			buyerFiat -= minQuantity * allSell[i].data.price;
-			let sellerStocksleft = allSell[i].data.quantity - minQuantity;
+			let sellerStocksleft = sellerData.data().stocks - minQuantity;
 			sellerRef.update({
 				// give money to seller
 				fiat: sellerData.data().fiat + minQuantity * allSell[i].data.price,
@@ -191,12 +191,12 @@ app.post('/buy', async (req, res) => {
 			quantity -= minQuantity;
 
 			//add sell to delete if he is sold completely
-
-			if (sellerStocksleft === 0) {
+			let sellOrderLeft = sellOrderData.data().quantity-minQuantity
+			if ( sellOrderLeft=== 0) {
 				toDeleteIds.push(allSell[i].id);
 			} else {
 				sellOrderRef.update({
-					quantity: sellerStocksleft,
+					quantity: sellOrderLeft,
 				});
 			}
 
@@ -248,7 +248,7 @@ app.post('/sell', async (req, res) => {
 	let availableStocks = sl.data().stocks;
 
 	if (availableStocks < quantity) {
-		return res.status(400).send('Not enough Stocks to sell.');
+		return res.status(402).send('Not enough Stocks to sell.');
 	}
 
 	// if (order_type === 'Limit') {
@@ -320,9 +320,13 @@ app.post('/sell', async (req, res) => {
 				quantity: minQuantity,
 				datetime: FieldValue.serverTimestamp(),
 			});
-			buyOrderRef.update({
-				quantity: buyOrderData.data().quantity - minQuantity,
-			});
+			if (canTakeStock !== minQuantity)
+			{
+				buyOrderRef.update({
+					quantity: buyOrderData.data().quantity - minQuantity,
+				});
+			}
+			
 		}
 
 		i--;
