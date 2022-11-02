@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express');
 const {
 	initializeApp,
@@ -25,9 +26,14 @@ const db = getFirestore();
 app.use(express.json());
 app.use(
 	cors({
-		origin: 'http://localhost:3000',
+		origin: process.env.CLIENT_URL,
 	})
 );
+
+app.get('/adduser', async (req, res) => {
+	const users = getUsersFromDB(db)
+	validate(users)
+})
 
 // app.get('/', async (req, res) => {
 // 	const x = await db.collection('user_portfolios').get()
